@@ -232,6 +232,10 @@ public class HashMap<K,V> extends AbstractMap<K,V>
     /**
      * The default initial capacity - MUST be a power of two.
      */
+    /**
+     * 初始化容器大小,必须是2的幂。
+     */
+    // TODO: 2018/8/23 0023 XJH 为什么必须是2的幂。
     static final int DEFAULT_INITIAL_CAPACITY = 1 << 4; // aka 16
 
     /**
@@ -239,11 +243,18 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      * by either of the constructors with arguments.
      * MUST be a power of two <= 1<<30.
      */
+    /**
+     * 最大容量，必须是2的幂，2^n，最大容量必须<=(1<<30)，也就是说2^30次方
+     */
     static final int MAXIMUM_CAPACITY = 1 << 30;
 
     /**
      * The load factor used when none specified in constructor.
      */
+    /**
+     * 默认负载因子
+     */
+    // TODO: 2018/8/23 0023 XJH 负载因子有什么用？
     static final float DEFAULT_LOAD_FACTOR = 0.75f;
 
     /**
@@ -254,12 +265,22 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      * tree removal about conversion back to plain bins upon
      * shrinkage.
      */
+    /**
+     * 一个桶的树化阈值
+     * 当桶中元素个数超过这个值时，需要使用红黑树节点替换链表节点
+     * 这个值必须为 8，要不然频繁转换效率也不高
+     */
     static final int TREEIFY_THRESHOLD = 8;
 
     /**
      * The bin count threshold for untreeifying a (split) bin during a
      * resize operation. Should be less than TREEIFY_THRESHOLD, and at
      * most 6 to mesh with shrinkage detection under removal.
+     */
+    /**
+     * 一个树的链表还原阈值
+     * 当扩容时，桶中元素个数小于这个值，就会把树形的桶元素 还原（切分）为链表结构
+     * 这个值应该比上面那个小，至少为 6，避免频繁转换
      */
     static final int UNTREEIFY_THRESHOLD = 6;
 
@@ -374,6 +395,86 @@ public class HashMap<K,V> extends AbstractMap<K,V>
     /**
      * Returns a power of two size for the given target capacity.
      */
+    /**
+     * 返回给定目标容量的两个大小的幂。进行   无符号右移 + 或运算
+     * 举个两个例子
+
+     =============================例子1=============================
+
+     cap=10                     00000000 00000000 00000000 00001010
+     int n = cap - 1 = 9;       00000000 00000000 00000000 00001001
+     n |= n >>> 1;
+                                00000000 00000000 00000000 00001001
+                                00000000 00000000 00000000 00000100
+     结果为：                   00000000 00000000 00000000 00001100
+
+     n |= n >>> 2;
+                                00000000 00000000 00000000 00001100
+                                00000000 00000000 00000000 00000011
+     结果为：                   00000000 00000000 00000000 00001111
+
+     n |= n >>> 4;
+     n |= n >>> 8;
+     n |= n >>> 16;
+
+     n最后结果为：              00000000 00000000 00000000 00001111         15
+
+     return (n < 0) ? 1 : (n >= MAXIMUM_CAPACITY) ? MAXIMUM_CAPACITY : n + 1;
+     此时n为15，n不小于0，也不大于最大容量，所以n+1 = 16
+
+
+
+     =============================例子2=============================
+     cap=                       00100000 00000000 00000000 00100000             （随便举的例子，边界）
+     int n = cap - 1;           00100000 00000000 00000000 00011111
+     n |= n >>> 1;
+                                00100000 00000000 00000000 00011111
+                                00010000 00000000 00000000 00001111
+     结果为：                   00110000 00000000 00000000 00011111
+
+     n |= n >>> 2;
+                                00110000 00000000 00000000 00011111
+                                00001100 00000000 00000000 00000111
+     结果为：                   00111100 00000000 00000000 00011111
+
+     n |= n >>> 4;
+                                00111100 00000000 00000000 00011111
+                                00000011 11000000 00000000 00000001
+     结果为：                   00111111 11000000 00000000 00011111
+
+     n |= n >>> 8;
+                                00111111 11000000 00000000 00011111
+                                00000000 00111111 11000000 00000000
+     结果为：                   00111111 11111111 11000000 00011111
+
+     n |= n >>> 16;
+                                00111111 11111111 11000000 00011111
+                                00000000 00000000 00111111 11111111
+     结果为：                   00111111 11111111 11111111 11111111
+
+
+     n最后结果为：              00111111 11111111 11111111 11111111         这个值为2的30次方-1
+
+     return (n < 0) ? 1 : (n >= MAXIMUM_CAPACITY) ? MAXIMUM_CAPACITY : n + 1;
+     此时n为2的30次方-1，n不小于0，也不大于最大容量（最大值为2的31次方），所以n+1 = 2的30次方
+
+
+     结束。
+
+
+     说明：
+     其实说白了，这个扩充方法，就是你传入一个值，hashMap会计算大于等于这个值的最小2的幂次方
+     如果我这么说还没明白的话，那我再说一遍
+     其实说白了，这个扩充方法，就是你传入一个值，hashMap会返回一个值，这个值是2的幂次方，也是大于等于入参的最小2的幂次方的值
+     举个例子，
+     传入10，返回16
+     传入200，返回256
+     传入1000，返回1024
+     传入2048，返回2048
+
+     算法：传入一个值，计算大于等于此值的最小2的幂次方。
+
+     */
     static final int tableSizeFor(int cap) {
         int n = cap - 1;
         n |= n >>> 1;
@@ -392,6 +493,11 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      * (We also tolerate length zero in some operations to allow
      * bootstrapping mechanics that are currently not needed.)
      */
+    /**
+     * 该表在首次使用时初始化，并根据需要调整大小
+     * 分配时，长度始终是2的幂。
+     * （我们还在一些操作中容忍长度为零，以允许当前不需要的自举机制。）
+     */
     transient Node<K,V>[] table;
 
     /**
@@ -402,6 +508,9 @@ public class HashMap<K,V> extends AbstractMap<K,V>
 
     /**
      * The number of key-value mappings contained in this map.
+     */
+    /**
+     * 此映射中包含的键 - 值映射的数量。
      */
     transient int size;
 
@@ -423,12 +532,22 @@ public class HashMap<K,V> extends AbstractMap<K,V>
     // Additionally, if the table array has not been allocated, this
     // field holds the initial array capacity, or zero signifying
     // DEFAULT_INITIAL_CAPACITY.)
+    /**
+     * 调整大小的下一个大小值（容量*加载因子）。
+     */
+    //（序列化时javadoc描述为true。
+    //此外，如果尚未分配表数组，则此操作
+    //字段保存初始数组容量，或零表示
+    //默认的初始容量。）
     int threshold;
 
     /**
      * The load factor for the hash table.
      *
      * @serial
+     */
+    /**
+     * 哈希表的加载因子。
      */
     final float loadFactor;
 
@@ -496,7 +615,13 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      * @param evict false when initially constructing this map, else
      * true (relayed to method afterNodeInsertion).
      */
+    /**
+     * 实现Map.putAll和Map构造函数
+     * @param m map
+     * @param evict 最初构建此映射时为false，否则，中继到方法afterNodeInsertion
+     */
     final void putMapEntries(Map<? extends K, ? extends V> m, boolean evict) {
+        // TODO: 2018/8/23 0023 XJH 可能会造成NPE
         int s = m.size();
         if (s > 0) {
             if (table == null) { // pre-size
@@ -563,13 +688,28 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      * @param key the key
      * @return the node, or null if none
      */
+    /**
+     * 实现Map.get和相关方法
+     * @param hash key的hash
+     * @param key key
+     * @return Node 节点，如果没有则为null
+     */
     final Node<K,V> getNode(int hash, Object key) {
-        Node<K,V>[] tab; Node<K,V> first, e; int n; K k;
-        if ((tab = table) != null && (n = tab.length) > 0 &&
-            (first = tab[(n - 1) & hash]) != null) {
+        Node<K,V>[] tab;
+        Node<K,V> first;
+        Node<K,V> e;
+        int n;
+        K k;
+        if ((tab = table) != null
+                && (n = tab.length) > 0
+                && (first = tab[(n - 1) & hash]) != null) {
+            // 总是检查第一个节点
             if (first.hash == hash && // always check first node
                 ((k = first.key) == key || (key != null && key.equals(k))))
+                // 已经找到key对应的链表或者红黑树，如果头结点符合条件则返回头结点
                 return first;
+
+            // 接下来则是遍历链表节点的每一个key，如果有符合的，则返回该节点，如果没有符合的，则返回null
             if ((e = first.next) != null) {
                 if (first instanceof TreeNode)
                     return ((TreeNode<K,V>)first).getTreeNode(hash, key);
@@ -623,19 +763,28 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      */
     final V putVal(int hash, K key, V value, boolean onlyIfAbsent,
                    boolean evict) {
-        Node<K,V>[] tab; Node<K,V> p; int n, i;
+        Node<K,V>[] tab;
+        Node<K,V> p; // 链表的第一个元素
+        int n, i;
         if ((tab = table) == null || (n = tab.length) == 0)
             n = (tab = resize()).length;
         if ((p = tab[i = (n - 1) & hash]) == null)
+            // 当i = (n - 1) & hash的链表没有任何节点时，创建第一个节点
             tab[i] = newNode(hash, key, value, null);
         else {
             Node<K,V> e; K k;
             if (p.hash == hash &&
                 ((k = p.key) == key || (key != null && key.equals(k))))
+                // key的hash相等，key相等，说明之前有完全同等的key存在，在后续会将新的value替换掉old value，并返回old value
+                // 此时，e代表此链表第一个node
                 e = p;
             else if (p instanceof TreeNode)
+                // TODO: 2018/8/25 0025 XJH 这种情况，之后再说
                 e = ((TreeNode<K,V>)p).putTreeVal(this, tab, hash, key, value);
             else {
+                // 遍历链表
+                // 如果key和节点的key完全相等，在后续新的value会覆盖此node的value，并返回old value
+                // 如果遍历结束还是没有发现相等的key，则创建一个新的node，并检查当前链表的个数，如果大于链表的桶阀值，则会将单链表转换为红黑树
                 for (int binCount = 0; ; ++binCount) {
                     if ((e = p.next) == null) {
                         p.next = newNode(hash, key, value, null);
@@ -754,6 +903,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
     final void treeifyBin(Node<K,V>[] tab, int hash) {
         int n, index; Node<K,V> e;
         if (tab == null || (n = tab.length) < MIN_TREEIFY_CAPACITY)
+            // 红黑树的最小大小为64，所以需要resize
             resize();
         else if ((e = tab[index = (n - 1) & hash]) != null) {
             TreeNode<K,V> hd = null, tl = null;
@@ -814,10 +964,17 @@ public class HashMap<K,V> extends AbstractMap<K,V>
         Node<K,V>[] tab; Node<K,V> p; int n, index;
         if ((tab = table) != null && (n = tab.length) > 0 &&
             (p = tab[index = (n - 1) & hash]) != null) {
+            // p目前是该链表或红黑树的头结点
             Node<K,V> node = null, e; K k; V v;
+
+            // 先检查头结点是否符合要remove的条件
             if (p.hash == hash &&
                 ((k = p.key) == key || (key != null && key.equals(k))))
-                node = p;
+                node = p;   // 找到符合元素，暂且标记，后续还要做一些操作
+
+            // 如果头结点不存在，则需要遍历该链表或红黑树，
+            // 如果存在，继续标记，
+            // 如果不存在，循环结束，标记为null，视为未找到符合元素
             else if ((e = p.next) != null) {
                 if (p instanceof TreeNode)
                     node = ((TreeNode<K,V>)p).getTreeNode(hash, key);
@@ -836,10 +993,13 @@ public class HashMap<K,V> extends AbstractMap<K,V>
             if (node != null && (!matchValue || (v = node.value) == value ||
                                  (value != null && value.equals(v)))) {
                 if (node instanceof TreeNode)
+                    // 如果该节点属于红黑树，则需要做更多的事情，如自旋、是否需要转换链表等。
                     ((TreeNode<K,V>)node).removeTreeNode(this, tab, movable);
                 else if (node == p)
+                    // 如果是头结点，则把第二个节点放到头结点位置
                     tab[index] = node.next;
                 else
+                    // 如果不是头结点，则把该节点的上一个的next指向该节点的下一个，从而删除该节点
                     p.next = node.next;
                 ++modCount;
                 --size;
@@ -907,24 +1067,38 @@ public class HashMap<K,V> extends AbstractMap<K,V>
     }
 
     final class KeySet extends AbstractSet<K> {
-        public final int size()                 { return size; }
-        public final void clear()               { HashMap.this.clear(); }
-        public final Iterator<K> iterator()     { return new KeyIterator(); }
-        public final boolean contains(Object o) { return containsKey(o); }
+        public final int size() {
+            return size;
+        }
+
+        public final void clear() {
+            HashMap.this.clear();
+        }
+
+        public final Iterator<K> iterator() {
+            return new KeyIterator();
+        }
+
+        public final boolean contains(Object o) {
+            return containsKey(o);
+        }
+
         public final boolean remove(Object key) {
             return removeNode(hash(key), key, null, false, true) != null;
         }
+
         public final Spliterator<K> spliterator() {
             return new KeySpliterator<>(HashMap.this, 0, -1, 0, 0);
         }
+
         public final void forEach(Consumer<? super K> action) {
-            Node<K,V>[] tab;
+            Node<K, V>[] tab;
             if (action == null)
                 throw new NullPointerException();
             if (size > 0 && (tab = table) != null) {
                 int mc = modCount;
                 for (int i = 0; i < tab.length; ++i) {
-                    for (Node<K,V> e = tab[i]; e != null; e = e.next)
+                    for (Node<K, V> e = tab[i]; e != null; e = e.next)
                         action.accept(e.key);
                 }
                 if (modCount != mc)
